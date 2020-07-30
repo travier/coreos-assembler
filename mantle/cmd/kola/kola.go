@@ -26,8 +26,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	ignconverter "github.com/coreos/ign-converter/translate/v30tov22"
-	ignv3 "github.com/coreos/ignition/v2/config/v3_0"
+	ignconverter "github.com/coreos/ign-converter/translate/v31tov24"
+	ignv3 "github.com/coreos/ignition/v2/config/v3_1"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
