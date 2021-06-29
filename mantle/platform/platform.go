@@ -395,6 +395,7 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int, options MachineOptio
 // checkSystemdUnitFailures make sure no system unit is in failed state.
 func checkSystemdUnitFailures(output string, distribution string) error {
 	var ignoredUnits []string
+	var unitNameIndex int
 
 	// Temporarily ignore some non-fatal flakes on RHCOS. See:
 	// https://bugzilla.redhat.com/show_bug.cgi?id=1914362
@@ -403,9 +404,20 @@ func checkSystemdUnitFailures(output string, distribution string) error {
 		ignoredUnits = append(ignoredUnits, "user-runtime-dir@1000.service")
 	}
 
+	switch distribution {
+	case "rhcos":
+		unitNameIndex = 0
+		break
+	case "fcos":
+		unitNameIndex = 1
+		break
+	default:
+		return fmt.Errorf("invalid distribution: %s", distribution)
+	}
+
 	var failedUnits []string
 	for _, unit := range strings.Split(output, "\n") {
-		u := strings.Fields(unit)[0]
+		u := strings.Fields(unit)[unitNameIndex]
 		ignore := false
 		for _, i := range ignoredUnits {
 			if u == i {
