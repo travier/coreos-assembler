@@ -28,8 +28,16 @@ def main():
         print("Use --force to force a rebuild")
         return
 
-    treefile_src = 'src/config/manifest.yaml'
-    extensions_src = 'src/config/extensions.yaml'
+    osver_file = 'src/osver'
+    if os.path.exists(osver_file):
+        with open(osver_file, encoding='utf-8') as f:
+            osver = f.read()
+        treefile_src = f'src/config/manifest-{osver}.yaml'
+        extensions_src = f'src/config/extensions-{osver}.yaml'
+    else:
+        treefile_src = 'src/config/manifest.yaml'
+        extensions_src = 'src/config/extensions.yaml'
+
     if not os.path.exists(extensions_src):
         raise Exception(f"Missing {extensions_src}")
 

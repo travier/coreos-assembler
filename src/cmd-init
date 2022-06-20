@@ -11,11 +11,14 @@ BRANCH=""
 COMMIT=""
 TRANSIENT=0
 
+SOURCE=""
+VARIANT=""
+
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
        coreos-assembler init [--force] [--transient] [--branch BRANCH]
-                             [--commit COMMIT] GITCONFIG
+                             [--commit COMMIT] [-V/--variant VARIANT] GITCONFIG
 
   For example, you can use https://github.com/coreos/fedora-coreos-config as
   GITCONFIG, or fork it.
@@ -28,12 +31,26 @@ Usage: coreos-assembler init --help
 
   Use `--transient` for builds that will throw away all cached data on
   success/failure, and should hence not invoke `fsync()` for example.
+
+  In the default case, a config repo only includes the configuration for a
+  single variant and the following files are thus used:
+    - `manifest.yaml`
+    - `image.yaml`
+    - `extensions.yaml`
+
+  If those files are not present in the repo of if a variant is explicitely
+  specified with `cosa init --variant FOO ...`, then COSA will read the
+  `variant_FOO` file (using `variant_default` if no variant is specified) to
+  figure out the `VARIANT` suffix to use for the following files:
+    - `manifest-$VARIANT.yaml`
+    - `image-$VARIANT.yaml`
+    - `extensions-$VARIANT.yaml`
 EOF
 }
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit: -- "$@") || rc=$?
+options=$(getopt --options hfb:c:V: --longoptions help,force,transient,branch:,commit:,variant: -- "$@") || rc=$?
 [[ $rc -eq 0 ]] || {
     print_help
     exit 1
@@ -69,6 +86,15 @@ while true; do
                 shift ;;
         esac
         ;;
+    -V | --variant)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                VARIANT="$2"
+                shift ;;
+        esac
+        ;;
     --)
         shift
         break
@@ -82,20 +108,27 @@ while true; do
     shift
 done
 
-# If user did not provide a repo then error out
-if [[ $# -ne 1 ]]; then
-    print_help
-    fatal "ERROR: Missing GITCONFIG"
-    exit 1
-fi
+case "$#" in
+    0)
+        # If user did not provide a repo then error out
+        print_help
+        fatal "ERROR: Missing GITCONFIG"
+        exit 1
+        ;;
+    1)
+        SOURCE="$1"
+        ;;
+    *)
+        print_help
+        fatal "ERROR: Too many arguments"
+        exit 1
+        ;;
+esac
 
-# If the current working dir is not empty then error out
-# unless force provided
+# If the current working dir is not empty then error out unless force provided
 if [[ "$FORCE" != "1" ]] && [[ -n "$(ls ./)" ]]; then
    fatal "init: current directory is not empty, override with --force"
 fi
-
-source="$1"; shift
 
 preflight
 
@@ -110,9 +143,12 @@ set -x
 mkdir -p src
 (cd src
  if [[ ! -e config ]]; then
-     case "${source}" in
-         /*) ln -s "${source}" config;;
-         *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
+     case "${SOURCE}" in
+         /*) ln -s "${SOURCE}" config
+             ;;
+         # The $BRANCH variable below is explicitely unquoted as we rely on it
+         # being skipped if empty
+         *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${SOURCE}" config
             # If a commit was specified then we'll fetch and reset
             # the specified branch to that commit. This is useful when
             # doing pipeline builds and targetting a specific commit
@@ -126,10 +162,35 @@ mkdir -p src
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
-     manifest="config/manifest.yaml"
-     if [[ ! -f "${manifest}" ]]; then
-         echo 1>&2 "Failed to find src/${manifest}"
-         fatal "If using a custom configuration, be sure it has a manifest.yaml."
+
+     # Setup the variant as requested or use the default.
+     # If no variant have been explicitely selected, then we need a default
+     # manifest or a default_variant file to be present.
+     if [[ -z "${VARIANT}" ]]; then
+        manifest="config/manifest.yaml"
+        if [[ -f "${manifest}" ]]; then
+            echo "Using default manifest (src/${manifest})"
+        else
+            variant_file="config/variant_default"
+            if [[ ! -f "${variant_file}" ]]; then
+                echo 1>&2 "Could not find a default manifest (src/${manifest}) or a default variant (src/${variant_file})"
+                fatal "If you are using a custom configuration, be sure it has a manifest.yaml."
+            else
+                osver="$(head -1 "${variant_file}")"
+                echo "Using variant: ${VARIANT} (${osver})"
+                echo "${osver}" > "osver"
+            fi
+        fi
+     # If we have requested a specifc variant then use that.
+     else
+         variant_file="config/variant_${VARIANT}"
+         if [[ ! -f "${variant_file}" ]]; then
+             fatal "Could not find the requested variant: ${VARIANT} (src/${variant_file})"
+         else
+            osver="$(head -1 "${variant_file}")"
+            echo "Using variant: ${VARIANT} (${osver})"
+            echo "${osver}" > "osver"
+         fi
      fi
  fi)
 
