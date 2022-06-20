@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-dn=$(dirname "$0")
+dn="$(dirname "$0")"
 # shellcheck source=src/cmdlib.sh
-. "${dn}"/cmdlib.sh
+. "${dn}/cmdlib.sh"
 
 # Initialize FORCE to 0 and BRANCH/COMMIT to an empty string
 FORCE=0
@@ -17,21 +17,24 @@ Usage: coreos-assembler init --help
        coreos-assembler init [--force] [--transient] [--branch BRANCH]
                              [--commit COMMIT] GITCONFIG
 
-  For example, you can use https://github.com/coreos/fedora-coreos-config
-  as GITCONFIG, or fork it.  Another option useful for local development
-  (if you're running a shell inside this container) is to pass a file path
-  starting with `/` - a symlink to it will be created and then used directly.
+  For example, you can use https://github.com/coreos/fedora-coreos-config as
+  GITCONFIG, or fork it.
+
+  Another option useful for local development (if you're running a shell inside
+  this container) is to pass a file path starting with `/` - a symlink to it
+  will be created and then used directly.
+
   You can specify a branch of a git repo with the `--branch` flag.
 
-  Use `--transient` for builds that will throw away all cached data on success/failure,
-  and should hence not invoke `fsync()` for example.
+  Use `--transient` for builds that will throw away all cached data on
+  success/failure, and should hence not invoke `fsync()` for example.
 EOF
 }
 
 # Call getopt to validate the provided input.
 rc=0
 options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit: -- "$@") || rc=$?
-[ $rc -eq 0 ] || {
+[[ $rc -eq 0 ]] || {
     print_help
     exit 1
 }
@@ -80,7 +83,7 @@ while true; do
 done
 
 # If user did not provide a repo then error out
-if [ $# -ne 1 ]; then
+if [[ $# -ne 1 ]]; then
     print_help
     fatal "ERROR: Missing GITCONFIG"
     exit 1
@@ -88,17 +91,17 @@ fi
 
 # If the current working dir is not empty then error out
 # unless force provided
-if [ "$FORCE" != "1" ] && [ -n "$(ls ./)" ]; then
+if [[ "$FORCE" != "1" ]] && [[ -n "$(ls ./)" ]]; then
    fatal "init: current directory is not empty, override with --force"
 fi
 
-source=$1; shift
+source="$1"; shift
 
 preflight
 
 if has_privileges; then
     sudo chown "$USER:" .
-elif [ ! -w . ]; then
+elif [[ ! -w . ]]; then
     fatal "init: running unprivileged, and current directory not writable"
 fi
 
@@ -106,7 +109,7 @@ set -x
 # Initialize sources (git)
 mkdir -p src
 (cd src
- if ! test -e config; then
+ if [[ ! -e config ]]; then
      case "${source}" in
          /*) ln -s "${source}" config;;
          *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
@@ -123,8 +126,8 @@ mkdir -p src
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
-     manifest=config/manifest.yaml
-     if ! [ -f "${manifest}" ]; then
+     manifest="config/manifest.yaml"
+     if [[ ! -f "${manifest}" ]]; then
          echo 1>&2 "Failed to find src/${manifest}"
          fatal "If using a custom configuration, be sure it has a manifest.yaml."
      fi
@@ -136,7 +139,7 @@ mkdir -p tmp
 mkdir -p overrides/rpm
 mkdir -p overrides/rootfs
 
-if test "${TRANSIENT}" = 1; then
+if [[ "${TRANSIENT}" == 1 ]]; then
     touch tmp/cosa-transient
 fi
 
