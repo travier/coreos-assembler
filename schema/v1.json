@@ -237,6 +237,7 @@
    "coreos-assembler.image-input-checksum",
    "coreos-assembler.meta-stamp",
    "coreos-assembler.overrides-active",
+   "coreos-assembler.variant",
    "fedora-coreos.parent-commit",
    "fedora-coreos.parent-version",
    "ref"
@@ -363,6 +364,12 @@
      "title":"Meta Stamp",
      "default":"",
      "minLength": 16
+    },
+   "coreos-assembler.variant": {
+     "$id":"#/properties/coreos-assembler.variant",
+     "type":"string",
+     "title":"Variant used to select the version for the manifest, image and extension YAMLs",
+     "default":""
     },
     "fedora-coreos.parent-version": {
      "$id":"#/properties/fedora-coreos.parent-version",
