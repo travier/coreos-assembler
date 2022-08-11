@@ -38,13 +38,30 @@ Usage: coreos-assembler init --help
     - `image.yaml`
     - `extensions.yaml`
 
-  If those files are not present in the repo of if a variant is explicitely
-  specified with `cosa init --variant FOO ...`, then COSA will read the
-  `variant_FOO` file (using `variant_default` if no variant is specified) to
-  figure out the `VARIANT` suffix to use for the following files:
+  If you want to include multiple variants in a single repo, you will have to
+  provide configuration files that specify for each variant which suffix to use
+  for the following files:
     - `manifest-$VARIANT.yaml`
     - `image-$VARIANT.yaml`
     - `extensions-$VARIANT.yaml`
+  The configuration files should only include the suffix (usualy a version) on
+  a single line.
+
+  For example, for the `scos` variant, the `variant_scos` file will be;
+  ```
+  $ cat variant_scos
+  c9s
+  ```
+  and the following files will be used:
+    - `manifest-c9s.yaml`
+    - `image-c9s.yaml`
+    - `extensions-c9s.yaml`
+
+  The two step process (configuration files specifying a version) is required
+  to enable developers and CI to track a variant (RHCOS, SCOS) independently of
+  the version of the base operating system used to build it (C9S, C10S, RHEL
+  8.6, RHEL 9.0, etc.). It is thus recommended to provide both explicit
+  versioned variants (c9s, rhel-8.6, rhel-9.0) and generic ones (scos, rhcos).
 EOF
 }
 
@@ -162,37 +179,62 @@ mkdir -p src
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
+ fi)
 
-     # Setup the variant as requested or use the default.
-     # If no variant have been explicitely selected, then we need a default
-     # manifest or a default_variant file to be present.
-     if [[ -z "${VARIANT}" ]]; then
-        manifest="config/manifest.yaml"
-        if [[ -f "${manifest}" ]]; then
-            echo "Using default manifest (src/${manifest})"
+# Setup the config for a given variant
+setup_variant() {
+    if [[ "${#}" -ne 1 ]]; then
+        echo 1>&2 "Error: This function must be called with the variant name to validate"
+    fi
+
+}
+
+# If no variant is selected:
+#   - Ensure that we have a manifest and an image definition to build an ostree
+#     commit and image from the config in the repo.
+#   - If no default manifest and image definition is available, look for a
+#     default variant.
+# Otherwise, setup the variant as explicitely requested.
+ if [[ -z "${VARIANT}" ]]; then
+    manifest="src/config/manifest.yaml"
+    image="src/config/image.yaml"
+    if [[ -f "${manifest}" ]] && [[ -f "${image}" ]]; then
+        echo "Using default manifests (${manifest} & ${image})"
+    elif [[ ! -f "${manifest}" ]] && [[ ! -f "${image}" ]]; then
+        echo "Could not find the default manifests (${manifest} & ${image}). Looking for a 'default' variant (src/${variant_file})"
+        setup_variant "default"
+    fi
+ # If we have requested a specifc variant then use that.
+ else
+    validate_variant "${VARIANT}"
+ fi
+local -r variant="${1}"
+
+local -r variant_file="config/variant_default"
+        if [[ ! -f "${variant_file}" ]]; then
+            echo 1>&2 "Could not find a default manifest (src/${manifest}) or a default variant (src/${variant_file})"
+            fatal "If you are using a custom configuration, be sure it has a manifest.yaml."
         else
-            variant_file="config/variant_default"
+            osver="$(head -1 "${variant_file}")"
             if [[ ! -f "${variant_file}" ]]; then
                 echo 1>&2 "Could not find a default manifest (src/${manifest}) or a default variant (src/${variant_file})"
                 fatal "If you are using a custom configuration, be sure it has a manifest.yaml."
-            else
-                osver="$(head -1 "${variant_file}")"
-                echo "Using variant: ${VARIANT} (${osver})"
-                echo "${osver}" > "osver"
-            fi
-        fi
-     # If we have requested a specifc variant then use that.
-     else
-         variant_file="config/variant_${VARIANT}"
-         if [[ ! -f "${variant_file}" ]]; then
-             fatal "Could not find the requested variant: ${VARIANT} (src/${variant_file})"
-         else
-            osver="$(head -1 "${variant_file}")"
             echo "Using variant: ${VARIANT} (${osver})"
-            echo "${osver}" > "osver"
-         fi
+            cat > "config.json" <<EOF
+{
+"coreos-assembler.variant": "${VARIANT}"
+}
+EOF
+        fi
+
+     variant_file="config/variant_${VARIANT}"
+     if [[ ! -f "${variant_file}" ]]; then
+         fatal "Could not find the requested variant: ${VARIANT} (src/${variant_file})"
+     else
+        osver="$(head -1 "${variant_file}")"
+        echo "Using variant: ${VARIANT} (${osver})"
+        echo "${osver}" > "osver"
      fi
- fi)
 
 mkdir -p cache
 mkdir -p builds
