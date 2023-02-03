@@ -40,7 +40,7 @@ var (
 	kolaPlatform      string
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
-	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-iso"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
 )
 
@@ -172,21 +172,21 @@ func syncOptionsImpl(useCosa bool) error {
 		return fmt.Errorf("unsupported %v %q", name, item)
 	}
 
+	if kolaPlatform == "iso" {
+		kolaPlatform = "qemu-iso"
+	}
 	// TODO: Could also auto-synchronize if e.g. --aws-ami is passed
-	if kolaPlatform == "" {
-		if kola.QEMUIsoOptions.IsoPath != "" {
-			kolaPlatform = "qemu-iso"
-		} else {
-			kolaPlatform = "qemu-unpriv"
-		}
+	if kolaPlatform == "" && kola.QEMUIsoOptions.IsoPath != "" {
+		kolaPlatform = "qemu-iso"
 	}
 
-	// There used to be a "privileged" qemu path, it is no longer supported.
-	// Alias qemu to qemu-unpriv.
-	if kolaPlatform == "qemu" {
-		kolaPlatform = "qemu-unpriv"
-	} else if kolaPlatform == "iso" {
-		kolaPlatform = "qemu-iso"
+	// There used to be two QEMU platforms: privileged ('qemu') and
+	// unprivileged ('qemu-unpriv'). We first removed support for privileged
+	// QEMU and aliased it to 'qemu-unpriv' and then renamed and merged
+	// 'qemu-unpriv' to 'qemu' to unify on a single name. 'qemu' is now the
+	// default.
+	if kolaPlatform == "" {
+		kolaPlatform = "qemu"
 	}
 
 	// test parallelism
@@ -334,7 +334,7 @@ func syncOptions() error {
 // options that can be derived from the cosa build metadata
 func syncCosaOptions() error {
 	switch kolaPlatform {
-	case "qemu-unpriv", "qemu":
+	case "qemu":
 		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.Meta.BuildArtifacts.Qemu != nil {
 			kola.QEMUOptions.DiskImage = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Qemu.Path)
 		}

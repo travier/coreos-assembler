@@ -279,7 +279,7 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "packet":
 		flight, err = packet.NewFlight(&PacketOptions)
-	case "qemu-unpriv":
+	case "qemu":
 		flight, err = unprivqemu.NewFlight(&QEMUOptions)
 	case "qemu-iso":
 		flight, err = qemuiso.NewFlight(&QEMUIsoOptions)
@@ -469,11 +469,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 	checkPlatforms := []string{pltfrm}
 
-	// qemu-unpriv has the same restrictions as QEMU but might also want additional restrictions due to the lack of a Local cluster
-	if pltfrm == "qemu-unpriv" {
-		checkPlatforms = append(checkPlatforms, "qemu")
-	}
-
 	// sort tags into include/exclude
 	positiveTags := []string{}
 	negativeTags := []string{}
@@ -627,7 +622,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		if allowed, excluded := isAllowed(Options.Distribution, t.Distros, t.ExcludeDistros); !allowed || excluded {
 			continue
 		}
-		if pltfrm == "qemu-unpriv" {
+		if pltfrm == "qemu" {
 			if allowed, excluded := isAllowed(QEMUOptions.Firmware, t.Firmwares, t.ExcludeFirmwares); !allowed || excluded {
 				continue
 			}
