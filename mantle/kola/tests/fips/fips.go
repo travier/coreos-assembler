@@ -61,7 +61,7 @@ func init() {
 		Name:        `fips.enable.partitions`,
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu", "qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 		UserData: conf.Ignition(`{
 			"ignition": {
 				"config": {

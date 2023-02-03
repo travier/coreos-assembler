@@ -33,7 +33,7 @@ func init() {
 		Name:        "coreos.ignition.failure",
 		Run:         runIgnitionFailure,
 		ClusterSize: 0,
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
 	})
 }

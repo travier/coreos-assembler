@@ -33,7 +33,7 @@ func init() {
 		Name:                 `luks.sss.t1`,
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
+		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})
@@ -43,7 +43,7 @@ func init() {
 		Name:                 `luks.sss.t2`,
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
+		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})

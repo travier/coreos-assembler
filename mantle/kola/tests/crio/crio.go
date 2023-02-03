@@ -203,8 +203,8 @@ func init() {
 		Distros:     []string{"rhcos"},
 		UserData:    enableCrioIgn,
 		Tags:        []string{"crio"},
-		// qemu-unpriv machines cannot communicate between each other
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		// qemu machines cannot communicate between each other
+		ExcludePlatforms: []string{"qemu"},
 	})
 }
 

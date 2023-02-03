@@ -53,8 +53,8 @@ func init() {
 }`),
 		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
 		Distros: []string{"rhcos"},
-		// qemu-unpriv machines cannot communicate between each other
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		// qemu machines cannot communicate between each other
+		ExcludePlatforms: []string{"qemu"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         rhcosClusterTLS,
@@ -87,8 +87,8 @@ func init() {
 }`),
 		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
 		Distros: []string{"rhcos"},
-		// qemu-unpriv machines cannot communicate between each other
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		// qemu machines cannot communicate between each other
+		ExcludePlatforms: []string{"qemu"},
 	})
 }
 

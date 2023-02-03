@@ -54,7 +54,7 @@ func init() {
 		Name:        "rhcos.network.multiple-nics",
 		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
@@ -65,7 +65,7 @@ func init() {
 		Name:        "rhcos.network.bond-with-dhcp",
 		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
@@ -76,7 +76,7 @@ func init() {
 		Name:        "rhcos.network.bond-with-restart",
 		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 	})
 }
 
