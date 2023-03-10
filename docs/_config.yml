@@ -1,7 +1,7 @@
 title: coreos/coreos-assembler
 description: coreos-assembler documentation
 baseurl: "/coreos-assembler"
-url: "https://coreos.github.io"
+url: "https://travier.github.io"
 # Comment above and use below for local development
 # url: "http://localhost:4000"
 permalink: /:title/
