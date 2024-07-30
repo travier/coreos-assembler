@@ -195,7 +195,7 @@ rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # the size set in the configs since some of them have minimum sizes that
 # the platforms require and we want a "default" disk size that has some
 # free space.
-nonroot_partition_sizes=513
+nonroot_partition_sizes=2048
 # On s390x there is one more build - Secure Execution case, which has
 # different image layout. We add the sizes of the se and verity
 # partitions so that they don't "eat into" the 35% buffer (though note
