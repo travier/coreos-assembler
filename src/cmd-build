@@ -263,6 +263,8 @@ if [ -n "${PARENT_BUILD}" ]; then
     fi
 fi
 
+# TODO
+SIGN_COMPOSEFS=true
 # If composeFS signing is enabled, generate the signature key
 if test -n "${SIGN_COMPOSEFS}"; then
     gen_ed25519_signing_key
@@ -365,15 +367,6 @@ fi
 if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
     fatal "Must fetch before building"
 fi
-composefs="$(jq -r .composefs < "${image_json}")"
-case "${composefs}" in
-    false)
-    ;;
-    true)
-        ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
-    ;;
-    *) fatal "Unhandled composefs setting: ${composefs}" ;;
-esac
 
 # --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
@@ -386,6 +379,9 @@ RUNVM_NONET=1 runcompose_tree --cache-only ${FORCE} \
            "${extra_compose_args[@]}"
 strip_out_lockfile_digests "$lockfile_out".tmp
 /usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
+
+# TODO Handle UKI & commit signature here
+
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
@@ -395,6 +391,9 @@ if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
     # Save this in case the image build fails
     cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
+    echo "Not supported with composefs"
+    exit 1
+
     commit="${previous_commit}"
     image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
     echo "commit: ${commit} image: ${image_input_checksum}"
@@ -459,14 +458,16 @@ echo "New build ID: ${buildid}"
 # Also write out a ref with the build ID
 ostree --repo="${tmprepo}" refs --create "${buildid}" "${commit}"
 
-#Not sure if we need to add --generate-composefs-metadata as I couldn't find
+# Not sure if we need to add --generate-composefs-metadata as I couldn't find
 # any references in ostree man pages.
 # is is default since https://github.com/coreos/rpm-ostree/pull/4495/commits/dbe78217c0205dad372c84b2cf0a299003787952 ?
 
-# If composeFS signing is enabled, sign the last commit
-if test -n "${SIGN_COMPOSEFS}"; then
-    ostree sign --keys-file ${TMPDIR}/cosa_key.ed25519 ${commit} --repo=${tmprepo}
-fi
+# TODO
+# If composefs signing is enabled, sign the last commit
+# if test -n "${SIGN_COMPOSEFS}"; then
+#     ostree sign --keys-file ${TMPDIR}/cosa_key.ed25519 ${commit} --repo=${tmprepo}
+# fi
+# TODO
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
@@ -679,29 +680,28 @@ ostree cat --repo tmp/repo "$commit" "/usr/lib/modules/$kernver/initramfs.img" >
 ostree cat --repo tmp/repo "$commit" "/usr/lib/os-release" > os-release
 ukify build \
     --linux "vmlinuz" \
-    --initrd "initramfs.img" \
+    --initrd "initramfs" \
     --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8" \
     --os-release "os-release" \
+    --uname "$kernver" \
     --signtool sbsign \
     --secureboot-private-key "db.key" \
     --secureboot-certificate "db.pem" \
     --output "uki" \
-    --measure \
-    --json pretty
-mkdir -p "tmp/rootfs/usr/lib/modules/$kernver/uki"
+    --measure
+mkdir -p "tmp/rootfs/usr/lib/modules/$kernver/"
 mv uki "tmp/rootfs/usr/lib/modules/$kernver/uki"
-sudo chown 0:0 "tmp/rootfs/usr/lib/modules/$kernver/uki"
-sudo chmod 644 "tmp/rootfs/usr/lib/modules/$kernver/uki"
-sudo chcon "system_u:object_r:usr_t" "tmp/rootfs/usr/lib/modules/$kernver/uki"
-ostree commit \
+chown 0:0 "tmp/rootfs/usr/lib/modules/$kernver/uki"
+chmod 644 "tmp/rootfs/usr/lib/modules/$kernver/uki"
+newcommit="$(ostree commit \
     --repo tmp/repo \
     --base "$commit" \
     --branch "fedora/x86_64/coreos/$(basename "$(ls tmp/repo/refs/heads/fedora/x86_64/coreos/*)")" \
     --subject "${buildid} + UKI" \
     --sign-type ed25519 \
-    --sign-from-file="tmp/ostree_signing_key" \
+    --sign-from-file="tmp/ostree_signing_key.ed25519" \
     --bootable \
-    /tmp/rootfs && \
+    tmp/rootfs)"
 rm -rf tmp/rootfs
 
 # and finally, build the specified targets

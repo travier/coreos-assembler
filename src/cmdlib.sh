@@ -1106,19 +1106,22 @@ extract_osrelease_name() {
 
 
 gen_ed25519_signing_key() {
-    local key_file="${1:-cosa_key}"
+    local key_file="ostree_signing_key"
+
     # Generate the key
-    openssl genpkey -algorithm ed25519 -outform PEM -out ${TMPDIR}/${key_file}
+    openssl genpkey -algorithm ed25519 -outform PEM -out "${TMPDIR}/${key_file}"
 
     # Extract the pubkey
-    PUBKEY="$(openssl pkey -outform DER -pubout -in ${TMPDIR}/${key_file} | tail -c 32 | base64)"
+    local -r pubkey="$(openssl pkey -outform DER -pubout -in "${TMPDIR}/${key_file}" | tail -c 32 | base64)"
 
-    ## write the pubkey in overrides
-    echo $PUBKEY > ${workdir}/overrides/rootfs/etc/ostree/initramfs-root-binding.key
+    # Write the pubkey in overrides
+    mkdir -p "${workdir}/overrides/rootfs/etc/ostree/"
+    echo "$pubkey" > "${workdir}/overrides/rootfs/etc/ostree/initramfs-root-binding.key"
 
     # Convert the private key to base64 for ostree signing
     ## Extract the seed
-    SEED="$(openssl pkey -outform DER -in ${TMPDIR}/${key_file} | tail -c 32 | base64)"
-    ## Secret key is the concatenation of SEED and PUBLIC
-    echo ${SEED}${PUBKEY} | base64 -d | base64 -w 0 > ${TMPDIR}/${key_file}.ed25519
+    local -r seed="$(openssl pkey -outform DER -in "${TMPDIR}/${key_file}" | tail -c 32 | base64)"
+
+    ## Secret key is the concatenation of seed and public
+    echo "${seed}${pubkey}" | base64 -d | base64 -w 0 > "${TMPDIR}/${key_file}.ed25519"
 }
