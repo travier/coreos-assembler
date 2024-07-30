@@ -388,7 +388,6 @@ kernver="$(basename "${kernpath}")"
 ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/modules/$kernver/vmlinuz" > vmlinuz
 ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/modules/$kernver/initramfs.img" > initramfs
 ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/os-release" > os-release
-cp ../../db.key ../../db.pem .
 ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
@@ -396,8 +395,8 @@ ukify build \
     --os-release "os-release" \
     --uname "$kernver" \
     --signtool sbsign \
-    --secureboot-private-key "db.key" \
-    --secureboot-certificate "db.pem" \
+    --secureboot-private-key "${workdir}/db.key" \
+    --secureboot-certificate "${workdir}/db.pem" \
     --output "uki" \
     --measure
 mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
@@ -410,7 +409,7 @@ commit="$(ostree commit \
     --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
     --subject "$commit + UKI" \
     --sign-type ed25519 \
-    --sign-from-file="tmp/ostree_signing_key.ed25519" \
+    --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
     --bootable \
     ukirootfs)"
 rm -rf ukirootfs
