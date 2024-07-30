@@ -382,7 +382,7 @@ strip_out_lockfile_digests "$lockfile_out".tmp
 
 # TODO Handle UKI & commit signature here
 
-commit="$(cat tmp/repo/refs/heads/"${buildid}")"
+commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
 kernpath="$(ostree ls --repo tmp/repo "${commit}" /usr/lib/modules | sort -h | tail -1 | awk '{print $5}')"
 kernver="$(basename "${kernpath}")"
 ostree cat --repo tmp/repo "$commit" "/usr/lib/modules/$kernver/vmlinuz" > vmlinuz
@@ -407,7 +407,7 @@ commit="$(ostree commit \
     --repo tmp/repo \
     --base "$commit" \
     --branch "fedora/x86_64/coreos/$(basename "$(ls tmp/repo/refs/heads/fedora/x86_64/coreos/*)")" \
-    --subject "${buildid} + UKI" \
+    --subject "$commit + UKI" \
     --sign-type ed25519 \
     --sign-from-file="tmp/ostree_signing_key.ed25519" \
     --bootable \
