@@ -89,7 +89,7 @@ if args.pkgcache:
         n = len("cache/pkgcache-repo/refs/heads/")
         if pkg[n:] not in build_pkg:
             print(f"Deleted {pkg[n:]}")
-            subprocess.call(f"sudo ostree refs --repo=cache/pkgcache-repo --delete {pkg[n:]}", shell=True)
+            subprocess.call(f" ostree refs --repo=cache/pkgcache-repo --delete {pkg[n:]}", shell=True)
 
     sys.exit(0)
 
