@@ -407,6 +407,7 @@ chmod 644 "ukirootfs/usr/lib/modules/$kernver/uki"
 commit="$(ostree commit \
     --repo "${tmprepo}" \
     --base "$commit" \
+    --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
     --subject "$commit + UKI" \
     --sign-type ed25519 \
     --sign-from-file="tmp/ostree_signing_key.ed25519" \
