@@ -56,8 +56,8 @@ has_privileges() {
         elif ! capsh --print | grep -q 'Bounding.*cap_sys_admin'; then
             info "Missing CAP_SYS_ADMIN; using virt"
             COSA_PRIVILEGED=0
-        elif [ "$(id -u)" != "0" ] && ! sudo true; then
-            info "Missing sudo privs; using virt"
+        elif [ "$(id -u)" != "0" ] && !  true; then
+            info "Missing  privs; using virt"
             COSA_PRIVILEGED=0
         else
             COSA_PRIVILEGED=1
@@ -113,9 +113,9 @@ preflight_kvm() {
             if ! has_privileges; then
                 fatal "running unprivileged, and /dev/kvm not writable"
             else
-                sudo rm -f /dev/kvm
-                sudo mknod /dev/kvm c 10 232
-                sudo setfacl -m u:"$USER":rw /dev/kvm
+                 rm -f /dev/kvm
+                 mknod /dev/kvm c 10 232
+                 setfacl -m u:"$USER":rw /dev/kvm
             fi
         fi
     fi
@@ -562,8 +562,8 @@ runcompose_tree() {
         set - "$@" --repo "${repo}" --write-composejson-to "${composejson}"
         # we hardcode a umask of 0022 here to make sure that composes are run
         # with a consistent value, regardless of the environment
-        (umask 0022 && sudo -E "$@")
-        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
+        (umask 0022 &&  "$@")
+         chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
         runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
     fi
@@ -586,8 +586,8 @@ runcompose_extensions() {
     if has_privileges; then
         # we hardcode a umask of 0022 here to make sure that composes are run
         # with a consistent value, regardless of the environment
-        (umask 0022 && sudo -E "$@")
-        sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
+        (umask 0022 &&  "$@")
+         chown -R -h "${USER}":"${USER}" "${outputdir}"
     else
         # Use a snapshot version of the cache qcow2 to allow multiple users
         # of the cache at the same time. This is needed because the extensions
