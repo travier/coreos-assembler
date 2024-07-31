@@ -403,14 +403,22 @@ mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
 mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
 chown 0:0 "ukirootfs/usr/lib/modules/$kernver/uki"
 chmod 644 "ukirootfs/usr/lib/modules/$kernver/uki"
+
+ostree_keys=()
+for key in $(ostree show --repo "${tmprepo}" "$commit" --list-metadata-keys); do
+    ostree_keys+=("--keep-metadata=$key")
+done
+
 commit="$(ostree commit \
     --repo "${tmprepo}" \
     --base "$commit" \
+    --parent "$commit" \
     --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
     --subject "$commit + UKI" \
     --sign-type ed25519 \
     --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
     --bootable \
+    "${ostree_keys[@]}" \
     ukirootfs)"
 rm -rf ukirootfs
 
