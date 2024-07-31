@@ -417,6 +417,7 @@ commit="$(ostree commit \
     --subject "$commit + UKI" \
     --sign-type ed25519 \
     --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
+    --generate-composefs-metadata \
     --bootable \
     "${ostree_keys[@]}" \
     ukirootfs)"
