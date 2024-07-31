@@ -397,44 +397,44 @@ ukify build \
     --signtool sbsign \
     --secureboot-private-key "${workdir}/db.key" \
     --secureboot-certificate "${workdir}/db.pem" \
-    --output "uki" \
+    --output "uki-${kernver}-${commit}" \
     --measure
-mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
-mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
-chown 0:0 "ukirootfs/usr/lib/modules/$kernver/uki"
-chmod 644 "ukirootfs/usr/lib/modules/$kernver/uki"
 
-ostree_keys=()
-for key in $(ostree show --repo "${tmprepo}" "$commit" --list-metadata-keys); do
-    ostree_keys+=("--keep-metadata=$key")
-done
+ostree sign "$commit" --sign-type ed25519 --keys-file "${workdir}/tmp/ostree_signing_key.ed25519"
 
-commit="$(ostree commit \
-    --repo "${tmprepo}" \
-    --base "$commit" \
-    --parent "$commit" \
-    --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
-    --subject "$commit + UKI" \
-    --sign-type ed25519 \
-    --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
-    --generate-composefs-metadata \
-    --bootable \
-    "${ostree_keys[@]}" \
-    ukirootfs)"
-rm -rf ukirootfs
+# mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
+# mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
+# chown 0:0 "ukirootfs/usr/lib/modules/$kernver/uki"
+# chmod 644 "ukirootfs/usr/lib/modules/$kernver/uki"
+
+# ostree_keys=()
+# for key in $(ostree show --repo "${tmprepo}" "$commit" --list-metadata-keys); do
+#     ostree_keys+=("--keep-metadata=$key")
+# done
+
+# commit="$(ostree commit \
+#     --repo "${tmprepo}" \
+#     --base "$commit" \
+#     --parent "$commit" \
+#     --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
+#     --subject "$commit + UKI" \
+#     --sign-type ed25519 \
+#     --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
+#     --generate-composefs-metadata \
+#     --bootable \
+#     "${ostree_keys[@]}" \
+#     ukirootfs)"
+# rm -rf ukirootfs
 
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
-    # commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
+    commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
     # Clean up prior versions
     rm -f "${workdir}"/tmp/compose-*.json
     # Save this in case the image build fails
     cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
-    echo "Not supported with composefs"
-    exit 1
-
     commit="${previous_commit}"
     image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
     echo "commit: ${commit} image: ${image_input_checksum}"
