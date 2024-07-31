@@ -397,7 +397,7 @@ ukify build \
     --signtool sbsign \
     --secureboot-private-key "${workdir}/db.key" \
     --secureboot-certificate "${workdir}/db.pem" \
-    --output "uki-${kernver}-${commit}" \
+    --output "${workdir}/tmp/uki" \
     --measure
 
 ostree sign "$commit" --sign-type ed25519 --keys-file "${workdir}/tmp/ostree_signing_key.ed25519"
