@@ -400,7 +400,11 @@ ukify build \
     --output "${workdir}/tmp/uki" \
     --measure
 
-ostree sign "$commit" --sign-type ed25519 --keys-file "${workdir}/tmp/ostree_signing_key.ed25519"
+ostree sign \
+    --repo "${tmprepo}" \
+    --sign-type ed25519 \
+    --keys-file "${workdir}/tmp/ostree_signing_key.ed25519" \
+    "$commit"
 
 # mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
 # mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
