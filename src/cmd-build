@@ -391,7 +391,7 @@ ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/os-release" > os-release
 ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
-    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs)/0" \
+    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum)/0" \
     --os-release "os-release" \
     --uname "$kernver" \
     --signtool sbsign \
