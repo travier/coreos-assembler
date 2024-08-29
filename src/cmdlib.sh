@@ -429,15 +429,16 @@ EOF
     # Store the fully rendered disk image config (image.json)
     # and the platform (platforms.json) if it exists inside
     # the ostree commit, so it can later be extracted by disk image
-    # builds.
-    local jsondir="${tmp_overridesdir}/jsons"
-    mkdir -p "${jsondir}/usr/share/coreos-assembler/"
-    cp "${image_json}" "${jsondir}/usr/share/coreos-assembler/"
+    # builds. Also the full contents of the live/ directory.
+    local usr_share_cosa="${tmp_overridesdir}/usr-share-cosa"
+    mkdir -p "${usr_share_cosa}/usr/share/coreos-assembler/"
+    cp "${image_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
     if [ -f "${platforms_json}" ]; then
-        cp "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
+        cp "${platforms_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
     fi
-    commit_overlay cosa-json "${jsondir}"
-    layers="${layers} overlay/cosa-json"
+    cp -r "${configdir}/live" "${usr_share_cosa}/usr/share/coreos-assembler/live"
+    commit_overlay usr-share-cosa "${usr_share_cosa}"
+    layers="${layers} overlay/usr-share-cosa"
 
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
@@ -729,7 +730,6 @@ runvm() {
 
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
-    echo /usr/lib/osbuild/stages/org.osbuild.dmverity >> "${vmpreparedir}/hostfiles"
 
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
@@ -759,8 +759,13 @@ else
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
+    # XXX: brutal workaround for https://github.com/coreos/coreos-assembler/issues/3848
+    killall rofiles-fuse || :
     /sbin/fstrim -v ${workdir}/cache
-    mount -o remount,ro ${workdir}/cache
+    while ! mount -o remount,ro ${workdir}/cache; do
+        echo "failed to remount cache ro; retrying..." |& tee /dev/virtio-ports/cosa-cmdout
+        sleep 1
+    done
     fsfreeze -f ${workdir}/cache
     fsfreeze -u ${workdir}/cache
     umount ${workdir}/cache

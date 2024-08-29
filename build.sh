@@ -173,7 +173,7 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-stages-add-stage-for-creating-dm-verity-partitions.patch
+    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-stages-dmverity-make-device-objects-more-generic.patch
 
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
