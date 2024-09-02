@@ -374,6 +374,7 @@ case "${composefs}" in
     ;;
     true | signed)
         ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
+        ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
     ;;
     *) fatal "Unhandled composefs setting: ${composefs}" ;;
 esac
