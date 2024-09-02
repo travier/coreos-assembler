@@ -414,6 +414,7 @@ ostree sign \
     --repo "${tmprepo}" \
     --sign-type ed25519 \
     --keys-file "${workdir}/tmp/ostree_signing_key.ed25519" \
+    --generate-composefs-metadata \
     "$commit"
 
 # mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
