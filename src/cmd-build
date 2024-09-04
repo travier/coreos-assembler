@@ -375,6 +375,11 @@ case "${composefs}" in
     true | signed)
         ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
         ostree config --repo="${tmprepo}" set ex-fsverity.required 'true'
+        mkdir -p "${workdir}/overrides/initramfs/etc/ostree/"
+        cat > "${workdir}/overrides/initramfs/etc/ostree/prepare-root.conf" << EOF
+        [composefs]
+        enabled=signed
+ EOF
     ;;
     *) fatal "Unhandled composefs setting: ${composefs}" ;;
 esac
