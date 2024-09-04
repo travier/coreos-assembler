@@ -404,8 +404,8 @@ ostree sign \
     --keys-file "${workdir}/tmp/ostree_signing_key.ed25519" \
     "$commit"
 
-ostree show "$commit"
-cfs_sig=$(ostree show "$commit" --print-metadata-key=ostree.composefs.digest.v0)
+ostree show --repo "${tmprepo}" $commit"
+cfs_sig=$(ostree show --repo "${tmprepo}" "$commit" --print-metadata-key=ostree.composefs.digest.v0)
 cfs_sig=$(echo "$cfs_sig"| sed 's/\[byte //g; s/\]//g; s/,//g; s/0x//g' | tr -d ' ')
 echo "composeFS digest: $cfs_sig"
 
@@ -600,6 +600,8 @@ else
         --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
+        --label="ostree.commit=${commit}" \
+        --label="ostree.commit.composefs.digest=${cfs_sig}" \
         --copymeta-opt=fedora-coreos.stream \
         "${last_build_manifest[@]}" \
         "${labels[@]}" \
