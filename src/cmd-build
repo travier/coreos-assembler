@@ -404,16 +404,16 @@ ostree sign \
     --keys-file "${workdir}/tmp/ostree_signing_key.ed25519" \
     "$commit"
 
-ostree show --repo "${tmprepo}" $commit"
+ostree show --repo "${tmprepo}" "${commit}"
 cfs_sig=$(ostree show --repo "${tmprepo}" "$commit" --print-metadata-key=ostree.composefs.digest.v0)
 cfs_sig=$(echo "$cfs_sig"| sed 's/\[byte //g; s/\]//g; s/,//g; s/0x//g' | tr -d ' ')
 echo "composeFS digest: $cfs_sig"
 
 kernpath="$(ostree ls --repo "${tmprepo}" "${commit}" /usr/lib/modules | sort -h | tail -1 | awk '{print $5}')"
 kernver="$(basename "${kernpath}")"
-ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/modules/$kernver/vmlinuz" > vmlinuz
-ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/modules/$kernver/initramfs.img" > initramfs
-ostree cat --repo "${tmprepo}" "$commit" "/usr/lib/os-release" > os-release
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/vmlinuz" > vmlinuz
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/initramfs.img" > initramfs
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/os-release" > os-release
 ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
