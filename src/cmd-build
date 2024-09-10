@@ -412,7 +412,7 @@ ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/os-release" > os-release
 ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
-    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
+    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.0/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
     --os-release "@os-release" \
     --uname "$kernver" \
     --signtool sbsign \
@@ -420,6 +420,11 @@ ukify build \
     --secureboot-certificate "${workdir}/db.pem" \
     --output "${workdir}/tmp/uki" \
     --measure
+
+# Sign systemd-boot binary
+sbsign --key "${workdir}/db.key" --cert "${workdir}/db.pem" \
+/usr/lib/systemd/boot/efi/systemd-bootx64.efi \
+ --output "${workdir}/tmp/systemd-bootx64-signed.efi
 
 # mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
 # mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
