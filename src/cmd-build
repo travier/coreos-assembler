@@ -413,7 +413,7 @@ ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
     --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
-    --os-release "os-release" \
+    --os-release "@os-release" \
     --uname "$kernver" \
     --signtool sbsign \
     --secureboot-private-key "${workdir}/db.key" \
