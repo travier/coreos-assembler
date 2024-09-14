@@ -420,6 +420,17 @@ ukify build \
     --secureboot-certificate "${workdir}/db.pem" \
     --output "${workdir}/tmp/uki" \
     --measure
+ukify build \
+    --linux "vmlinuz" \
+    --initrd "initramfs" \
+    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
+    --os-release "@os-release" \
+    --uname "$kernver" \
+    --signtool sbsign \
+    --secureboot-private-key "${workdir}/db.key" \
+    --secureboot-certificate "${workdir}/db.pem" \
+    --output "${workdir}/tmp/uki.1" \
+    --measure
 
 # Sign systemd-boot binary
 ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/systemd-bootx64.efi" > systemd-bootx64.efi
