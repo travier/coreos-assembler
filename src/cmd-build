@@ -409,11 +409,13 @@ kernver="$(basename "${kernpath}")"
 ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/vmlinuz" > vmlinuz
 ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/initramfs.img" > initramfs
 ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/os-release" > os-release
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/linuxx64.efi.stub" > linuxx64.efi.stub
 ukify build \
     --linux "vmlinuz" \
     --initrd "initramfs" \
     --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.0/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
     --os-release "@os-release" \
+    --stub "linuxx64.efi.stub" \
     --uname "$kernver" \
     --signtool sbsign \
     --secureboot-private-key "${workdir}/db.key" \
@@ -425,6 +427,7 @@ ukify build \
     --initrd "initramfs" \
     --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
     --os-release "@os-release" \
+    --stub "linuxx64.efi.stub" \
     --uname "$kernver" \
     --signtool sbsign \
     --secureboot-private-key "${workdir}/db.key" \
