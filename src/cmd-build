@@ -422,9 +422,12 @@ ukify build \
     --measure
 
 # Sign systemd-boot binary
-sbsign --key "${workdir}/db.key" --cert "${workdir}/db.pem" \
-/usr/lib/systemd/boot/efi/systemd-bootx64.efi \
- --output "${workdir}/tmp/systemd-bootx64-signed.efi"
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/systemd-bootx64.efi" > systemd-bootx64.efi
+sbsign \
+    --key "${workdir}/db.key" \
+    --cert "${workdir}/db.pem" \
+    --output "${workdir}/tmp/systemd-bootx64-signed.efi"
+    systemd-bootx64.efi
 
 # mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
 # mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
