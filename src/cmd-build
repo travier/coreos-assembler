@@ -441,7 +441,7 @@ ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/systemd-bo
 sbsign \
     --key "${workdir}/db.key" \
     --cert "${workdir}/db.pem" \
-    --output "${workdir}/tmp/systemd-bootx64-signed.efi"
+    --output "${workdir}/tmp/systemd-bootx64-signed.efi" \
     "/usr/lib/systemd/boot/efi/systemd-bootx64.efi"
 
 # mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
