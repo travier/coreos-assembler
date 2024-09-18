@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
 dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
@@ -38,6 +38,8 @@ Usage: coreos-assembler build --help
   --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
                         Note this is automatically enabled when adding to an existing multi-arch
                         non-strict build.
+  --sign-composefs      Sign the composeFS metadata and attach the signature to the OSTree commit.
+                        This will also insert the public key into the rootfs for signature verification.
 
   Additional environment variables supported:
 
@@ -62,8 +64,9 @@ TAG=
 STRICT=
 CONFIG_ARCHIVE=1
 AUTOLOCK_VERSION=
+SIGN_COMPOSEFS=
 rc=0
-options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock:,versionary -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock:,versionary,sign-composefs -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -122,6 +125,9 @@ while true; do
         -t | --tag)
             shift
             TAG=$1
+            ;;
+        --sign-composefs)
+            SIGN_COMPOSEFS=true
             ;;
         --)
             shift
@@ -257,6 +263,13 @@ if [ -n "${PARENT_BUILD}" ]; then
     fi
 fi
 
+# TODO
+SIGN_COMPOSEFS=true
+# If composeFS signing is enabled, generate the signature key
+if test -n "${SIGN_COMPOSEFS}"; then
+    gen_ed25519_signing_key
+fi
+
 # Calculate image input checksum now and gather previous image build variables if any
 ks_path="${configdir}"/image.ks
 if [ -f "${ks_path}" ]; then
@@ -354,12 +367,14 @@ fi
 if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
     fatal "Must fetch before building"
 fi
+
 composefs="$(jq -r .composefs < "${image_json}")"
 case "${composefs}" in
     false)
     ;;
-    true)
+    true | signed)
         ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
+        ostree config --repo="${tmprepo}" set ex-fsverity.required 'true'
     ;;
     *) fatal "Unhandled composefs setting: ${composefs}" ;;
 esac
@@ -375,6 +390,84 @@ RUNVM_NONET=1 runcompose_tree --cache-only ${FORCE} \
            "${extra_compose_args[@]}"
 strip_out_lockfile_digests "$lockfile_out".tmp
 /usr/lib/coreos-assembler/finalize-artifact "${lockfile_out}"{.tmp,}
+
+commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
+
+ostree sign \
+    --repo "${tmprepo}" \
+    --sign-type ed25519 \
+    --keys-file "${workdir}/tmp/ostree_signing_key.ed25519" \
+    "$commit"
+
+ostree show --repo "${tmprepo}" "${commit}"
+cfs_sig=$(ostree show --repo "${tmprepo}" "$commit" --print-metadata-key=ostree.composefs.digest.v0)
+cfs_sig=$(echo "$cfs_sig"| sed 's/\[byte //g; s/\]//g; s/,//g; s/0x//g' | tr -d ' ')
+echo "composeFS digest: $cfs_sig"
+
+kernpath="$(ostree ls --repo "${tmprepo}" "${commit}" /usr/lib/modules | sort -h | tail -1 | awk '{print $5}')"
+kernver="$(basename "${kernpath}")"
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/vmlinuz"       > vmlinuz
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/modules/${kernver}/initramfs.img" > initramfs
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/os-release"                       > os-release
+mkdir -p "/usr/lib/systemd/boot/efi/"
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/addonx64.efi.stub"   > /usr/lib/systemd/boot/efi/addonx64.efi.stub
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/linuxx64.efi.stub"   > linuxx64.efi.stub
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/systemd-bootx64.efi" > /usr/lib/systemd/boot/efi/systemd-bootx64.efi
+ukify build \
+    --linux "vmlinuz" \
+    --initrd "initramfs" \
+    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.0/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
+    --os-release "@os-release" \
+    --uname "$kernver" \
+    --signtool sbsign \
+    --secureboot-private-key "${workdir}/db.key" \
+    --secureboot-certificate "${workdir}/db.pem" \
+    --output "${workdir}/tmp/uki" \
+    --measure
+ukify build \
+    --linux "vmlinuz" \
+    --initrd "initramfs" \
+    --cmdline "rw mitigations=auto,nosmt ignition.platform.id=qemu console=tty0 console=ttyS0,115200n8 ostree=/ostree/boot.1/fedora-coreos/$(cat vmlinuz initramfs | sha256sum | awk '{print $1}')/0" \
+    --os-release "@os-release" \
+    --uname "$kernver" \
+    --signtool sbsign \
+    --secureboot-private-key "${workdir}/db.key" \
+    --secureboot-certificate "${workdir}/db.pem" \
+    --output "${workdir}/tmp/uki.1" \
+    --measure
+
+# Sign systemd-boot binary
+ostree cat --repo "${tmprepo}" "${commit}" "/usr/lib/systemd/boot/efi/systemd-bootx64.efi" > systemd-bootx64.efi
+sbsign \
+    --key "${workdir}/db.key" \
+    --cert "${workdir}/db.pem" \
+    --output "${workdir}/tmp/systemd-bootx64-signed.efi" \
+    "/usr/lib/systemd/boot/efi/systemd-bootx64.efi"
+
+# mkdir -p "ukirootfs/usr/lib/modules/$kernver/"
+# mv uki "ukirootfs/usr/lib/modules/$kernver/uki"
+# chown 0:0 "ukirootfs/usr/lib/modules/$kernver/uki"
+# chmod 644 "ukirootfs/usr/lib/modules/$kernver/uki"
+
+# ostree_keys=()
+# for key in $(ostree show --repo "${tmprepo}" "$commit" --list-metadata-keys); do
+#     ostree_keys+=("--keep-metadata=$key")
+# done
+
+# commit="$(ostree commit \
+#     --repo "${tmprepo}" \
+#     --base "$commit" \
+#     --parent "$commit" \
+#     --branch "fedora/x86_64/coreos/$(basename "$(ls "${tmprepo}/refs/heads/fedora/x86_64/coreos/"*)")" \
+#     --subject "$commit + UKI" \
+#     --sign-type ed25519 \
+#     --sign-from-file="${workdir}/tmp/ostree_signing_key.ed25519" \
+#     --generate-composefs-metadata \
+#     --bootable \
+#     "${ostree_keys[@]}" \
+#     ukirootfs)"
+# rm -rf ukirootfs
+
 # Very special handling for --write-composejson-to as rpm-ostree doesn't
 # write it if the commit didn't change.
 if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
@@ -448,6 +541,17 @@ echo "New build ID: ${buildid}"
 # Also write out a ref with the build ID
 ostree --repo="${tmprepo}" refs --create "${buildid}" "${commit}"
 
+# Not sure if we need to add --generate-composefs-metadata as I couldn't find
+# any references in ostree man pages.
+# is is default since https://github.com/coreos/rpm-ostree/pull/4495/commits/dbe78217c0205dad372c84b2cf0a299003787952 ?
+
+# TODO
+# If composefs signing is enabled, sign the last commit
+# if test -n "${SIGN_COMPOSEFS}"; then
+#     ostree sign --keys-file ${TMPDIR}/cosa_key.ed25519 ${commit} --repo=${tmprepo}
+# fi
+# TODO
+
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
 build_timestamp=$(date -u +$RFC3339)
@@ -514,6 +618,8 @@ else
         --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
+        --label="ostree.commit=${commit}" \
+        --label="ostree.commit.composefs.digest=${cfs_sig}" \
         --copymeta-opt=fedora-coreos.stream \
         "${last_build_manifest[@]}" \
         "${labels[@]}" \
